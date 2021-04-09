@@ -1,10 +1,10 @@
 # MFM  
 Barra Multifactor Model implementation  
-> mfm_reg.py
+> reg.py
 > > Preprocess data and build regression model in CNE5  
 > 
-> mfm_risk.py
+> risk.py
 > > Compute portfolio risk matrix  
 > 
-> mfm_attribution.py
+> attribution.py
 > > Compute industry exposure and style factor exposure of given portfolio performence.  
