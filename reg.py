@@ -1,4 +1,4 @@
-from typing import *
+from typing import Union
 
 import pandas as pd 
 import numpy as np 
@@ -100,7 +100,7 @@ class BarraRegression(object):
         constrain_mat = np.delete(constrain_mat, ind_num, axis=1)
         return constrain_mat
     
-    def _normalize(self, style_factor):
+    def _normalize(self, style_factor: np.ndarray):
         weighted_stats = DescrStatsW(style_factor, weights=self._mkt_cap.flatten())
         weighted_mu = weighted_stats.mean
         factor_std = np.std(style_factor, axis=0, ddof=1)
@@ -115,19 +115,19 @@ class BarraRegression(object):
 
         # pure_factor_portfolio_weight.shape = (K, N), K = 1 + ind_num + style_num, N = stock_num
         pure_factor_portfolio_weight = np.linalg.multi_dot(
-            constrain, 
+            [constrain, 
             np.linalg.inv(
                 np.linalg.multi_dot(
-                    constrain.T, 
+                    [constrain.T, 
                     factor.T, 
                     wls_weight, 
                     factor, 
-                    constrain
+                    constrain]
                 )
             ), 
             constrain.T, 
             factor.T, 
-            wls_weight
+            wls_weight]
         )
         factor_ret = np.matmul(pure_factor_portfolio_weight, self._ret) # (K, 1)
         stock_specific_ret = self._ret - np.matmul(factor, factor_ret) # (N, 1)
