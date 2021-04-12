@@ -27,31 +27,31 @@ class BarraRegression(object):
         self._style_factor = self._normalize(style_factor)
         self._country_factor = np.ones(ret.shape)
 
-        self.pure_factor_portfolio_weight = None
-        self.factor_ret = None
-        self.stock_specific_ret = None
-        self.pure_factor_portfolio_exposure = None
-        self.r_square = None
+        self._pure_factor_portfolio_weight = None
+        self._factor_ret = None
+        self._stock_specific_ret = None
+        self._pure_factor_portfolio_exposure = None
+        self._r_square = None
     
     @property
     def pure_factor_portfolio_weight(self):
-        return self.pure_factor_portfolio_weight
+        return self._pure_factor_portfolio_weight
     
     @property
     def pure_factor_portfolio_exposure(self):
-        return self.pure_factor_portfolio_exposure
+        return self._pure_factor_portfolio_exposure
     
     @property
     def factor_ret(self):
-        return self.factor_ret
+        return self._factor_ret
     
     @property
     def stock_specific_ret(self):
-        return self.stock_specific_ret
+        return self._stock_specific_ret
     
     @property
     def r_square(self):
-        return self.r_square
+        return self._r_square
 
     def _process_inputs(self, ret, mkt_cap, ind, style):
         """transform inputs to 2D-array and drop null value if exist"""
@@ -133,10 +133,10 @@ class BarraRegression(object):
         stock_specific_ret = self._ret - np.matmul(factor, factor_ret) # (N, 1)
         pure_factor_portfolio_exposure = np.matmul(pure_factor_portfolio_weight, factor) # (K, K)
 
-        self.pure_factor_portfolio_weight = pure_factor_portfolio_weight
-        self.factor_ret = factor_ret
-        self.stock_specific_ret = stock_specific_ret
-        self.pure_factor_portfolio_exposure = pure_factor_portfolio_exposure
-        self.r_square = 1 - np.var(stock_specific_ret) / np.var(self._ret)
+        self._pure_factor_portfolio_weight = pure_factor_portfolio_weight
+        self._factor_ret = factor_ret
+        self._stock_specific_ret = stock_specific_ret
+        self._pure_factor_portfolio_exposure = pure_factor_portfolio_exposure
+        self._r_square = 1 - np.var(stock_specific_ret, ddof=1) / np.var(self._ret, ddof=1)
 
         return None
