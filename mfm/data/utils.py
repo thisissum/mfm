@@ -6,6 +6,9 @@ import numpy as np
 class DataConfig:
     start_datetime = "2007-01-01"
     data_dir = "./findata/"
+    calendars_name = "calendars.csv"
+    basic_data_dir = "basic"
+    instruments_name = "instruments.csv"
 
 
 def format_dt(datetime: Union[str, pd.Timestamp], api="tushare") -> str:
