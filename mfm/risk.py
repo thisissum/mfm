@@ -8,7 +8,7 @@ class CovEstimator(object):
         T: int, 
         factor_q: int = 15, 
         specific_q: int = 10,
-        ema_alpha: float=0.5
+        ema_alpha: float=0.05,
     ):
         assert T > max(factor_q, specific_q), "T must bigger than q"
         
@@ -17,10 +17,10 @@ class CovEstimator(object):
         self._specific_ret_q = specific_q
         self._ema_alpha = ema_alpha
     
-    def _demean(self, array, axis=0):
+    def _demean(self, array: np.ndarray, axis: int = 0):
         return array - np.mean(array, axis=axis, keepdims=True)
     
-    def _ema(self, array, alpha=0.05, axis=0):
+    def _ema(self, array: np.ndarray, alpha: float = 0.05, axis: int = 0):
         length = array.shape[axis]
         axis_to_expand = [i for i in range(len(array.shape))]
         axis_to_expand.remove(axis)
@@ -28,10 +28,9 @@ class CovEstimator(object):
         weight = np.expand_dims(weight, axis_to_expand)
         return np.sum(array * weight, axis=axis)
 
-    def _newey_west(self, ret: np.ndarray, q: int):
+    def _newey_west_adj(self, ret: np.ndarray, q: int) -> np.ndarray:
         # 输入矩阵形状检查
-        assert len(ret.shape) == 2 and ret.shape[0] > max(self._factor_ret_q, self._specific_ret_q), \
-            "Time window must longer than {}".format(max(self._factor_ret_q, self._specific_ret_q))
+        assert len(ret.shape) == 2 and ret.shape[0] > q, "Time window must longer than {}".format(q)
         
         # ret.shape = [timestep(t), factor_num(fnum)]
         t = ret.shape[0]
@@ -52,5 +51,34 @@ class CovEstimator(object):
             adj_cov += weight_i * cov_i
         
         return cov_0 + adj_cov
+    
+    def _eigenfactor_adj(self, factor_cov: np.ndarray, T: int, m: int = 100, alpha: float = 1.5):
+        # 因子收益率样本协方差矩阵分解
+        D, U = np.linalg.eig(factor_cov) # D.shape=(fnum), U.shape=(fnum, fnum)
+        K = factor_cov.shape[0]
+        # 模拟M次
+        V = np.zeros(K)
+        for i in range(m):
+            eigen_factor_ret = np.zeros((K, T))
+            for i in range(T):
+                eigen_factor_ret[:, i] = np.random.normal(0, np.sqrt(D))
+            simulated_factor_ret = np.matmul(U, eigen_factor_ret) # (fnum, T)
+            simulated_factor_cov = np.cov(simulated_factor_ret)
+            simulated_D, simulated_U = np.linalg.eig(simulated_factor_cov)
+            eigenfactor_cov = np.linalg.multi_dot([simulated_U.T, factor_cov, simulated_U])
+            eigenfactor_var = np.diag(eigenfactor_cov) # shape=(fnum)
+            V += np.sqrt(simulated_D / eigenfactor_var)
+        V = V / m
+        V_s = alpha * (V - 1) + 1
+        D_adj = np.matmul(np.diag(V_s**2), D)
+        factor_cov_adj = np.linalg.multi_dot([U, D_adj, U.T])
+        return factor_cov_adj
+    
+    def _bayesian_shinkage(self, specific_ret, market_cap):
+        pass
+    
 
+
+
+        
 

@@ -7,11 +7,12 @@ from statsmodels.stats.weightstats import DescrStatsW
 
 class BarraRegression(object):
     """
-    Multifactor model regression in barra CNE5
-    >>> model = BarraRegression(ret_tplus1, market_cap_t, industry_factor_t, style_factor_t)
-    >>> model.fit()
-    >>> factor_ret = model.factor_ret
-    >>> stock_specific_ret = model.stock_specific_ret
+    Multifactor model regression in barra CNE5  
+    Example: 
+        >>> model = BarraRegression(ret_tplus1, market_cap_t, industry_factor_t, style_factor_t)
+        >>> model.fit()
+        >>> factor_ret = model.factor_ret
+        >>> stock_specific_ret = model.stock_specific_ret
     """
     def __init__(
         self, 
