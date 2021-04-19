@@ -2,6 +2,21 @@ import pandas as pd
 import numpy as np 
 
 
+def ema(array: np.ndarray, alpha: float = 0.05, axis: int = 0):
+    if axis > len(array.shape):
+        raise IndexError("axis: {} out of range: {}".format(axis, len(array.shape)))
+    
+    length = array.shape[axis]
+    axis_to_expand = [i for i in range(len(array.shape))]
+    axis_to_expand.remove(axis)
+    weight = np.array([(1-alpha)**length-1] + [(1-alpha)**i*alpha for i in range(length-1)])
+    
+    if axis_to_expand:
+        weight = np.expand_dims(weight, axis_to_expand)
+    
+    return np.sum(array * weight, axis=axis)
+
+
 class CovEstimator(object):
     def __init__(
         self, 
@@ -19,14 +34,6 @@ class CovEstimator(object):
     
     def _demean(self, array: np.ndarray, axis: int = 0):
         return array - np.mean(array, axis=axis, keepdims=True)
-    
-    def _ema(self, array: np.ndarray, alpha: float = 0.05, axis: int = 0):
-        length = array.shape[axis]
-        axis_to_expand = [i for i in range(len(array.shape))]
-        axis_to_expand.remove(axis)
-        weight = np.array([(1-alpha)**length-1] + [(1-alpha)**i*alpha for i in range(length-1)])
-        weight = np.expand_dims(weight, axis_to_expand)
-        return np.sum(array * weight, axis=axis)
 
     def _newey_west_adj(self, ret: np.ndarray, q: int) -> np.ndarray:
         # 输入矩阵形状检查
@@ -40,7 +47,7 @@ class CovEstimator(object):
         cov_per_t = np.matmul(expand_ret, expand_ret.transpose(0,2,1)) # (t, fnum, fnum)
         
         # 指数加权平均估计样本协方差
-        cov_0 = self._ema(cov_per_t, self._ema_alpha, axis=0) # (fnum, fnum)
+        cov_0 = ema(cov_per_t, self._ema_alpha, axis=0) # (fnum, fnum)
 
         # 调整协方差矩阵
         adj_cov = np.zeros(cov_0.shape) # (fnum, fnum)
@@ -55,7 +62,7 @@ class CovEstimator(object):
     def _eigenfactor_adj(self, factor_cov: np.ndarray, T: int, m: int = 100, alpha: float = 1.5):
         # 因子收益率样本协方差矩阵分解
         D, U = np.linalg.eig(factor_cov) # D.shape=(fnum), U.shape=(fnum, fnum)
-        K = factor_cov.shape[0]
+        K = factor_cov.shape[0] # fnum
         # 模拟M次
         V = np.zeros(K)
         for i in range(m):
@@ -74,11 +81,26 @@ class CovEstimator(object):
         factor_cov_adj = np.linalg.multi_dot([U, D_adj, U.T])
         return factor_cov_adj
     
-    def _bayesian_shinkage(self, specific_ret, market_cap):
-        pass
-    
+    def _bayesian_shinkage(self, specific_std: np.ndarray, market_cap: np.ndarray, q: float, group_num: int = 10):
+        # 按市值分组
+        mkt_cap_groups = np.array_split(np.sort(market_cap.flatten()), group_num)
+        # 每组的布尔索引
+        group_conditions = [np.isin(market_cap, mkt_cap_groups[i]) for i in range(group_num)]
+
+        adj_std = np.zeros(specific_std.shape)
+        for _, g in enumerate(group_conditions):
+            # 每组计算先验特质波动率
+            weight = market_cap[g] / market_cap[g].sum()
+            prior_std = weight * specific_std[g]
+            # 先验波动率的权重
+            prior_std_weight = (q * np.abs(specific_std[g] - prior_std)) / (
+                np.sqrt((1/len(g)*np.sum(specific_std[g]-prior_std))) + \
+                (q * np.abs(specific_std[g] - prior_std))
+            )
+            adj_std[g] = prior_std_weight * prior_std + specific_std[g] * (1-prior_std_weight)
+        return adj_std
 
 
 
-        
+
 
